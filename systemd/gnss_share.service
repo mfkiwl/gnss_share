@@ -1,0 +1,11 @@
+[Unit]
+Description=Manage access to and AGPS on GNSS devices
+Before=gpsd.service gpsd.socket geoclue.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/gnss_share -v
+
+[Install]
+WantedBy=multi-user.target
+
