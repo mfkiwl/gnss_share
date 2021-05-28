@@ -85,6 +85,11 @@ class STM_AGPS:
                 line = await self._ser.readline()
                 line = line[:-1]
 
+    async def _load_from_file(self, ack, file):
+        async with await trio.open_file(file, 'rb') as f:
+            while line := await f.readline():
+                await self._serial_write_cmd(line.strip(), ack)
+
     async def reset(self):
         msg = pynmea2.GGA('P', 'STMGPSRESET', ())
         await self._serial_write_cmd(msg)
@@ -124,10 +129,10 @@ class STM_AGPS:
         await self._store_to_file('STMDUMPALMANAC', '$PSTMALMANAC', file)
 
     async def _load_ephemeris(self, file='ephemeris.txt'):
-        await self._store_to_file('STMDUMPEPHEMS', '$PSTMEPHEM', file)
+        await self._load_from_file('$PSTMEPHEMOK', file)
 
     async def _load_almanac(self, file='almanac.txt'):
-        await self._store_to_file('STMDUMPALMANAC', '$PSTMALMANAC', file)
+        await self._load_from_file('$PSTMALMANACOK', file)
 
     async def set_time(self):
         await self.reset()
