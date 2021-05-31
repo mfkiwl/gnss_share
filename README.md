@@ -17,6 +17,20 @@ current working directory, or in `/etc/gnss_share.conf`.
 
 See this file for descriptions of supported options.
 
+# Usage
+
+Run with `-h` to see the list of supported command line options.
+
+In addition to the command line options, this application will respond to the
+following signals:
+
+- `SIGUSR` - The application will store AGPS data to file, and continue running
+
+- `SIGTERM` - Application will store AGPS data to file, and quit
+
+- `SIGINT` - Application will store AGPS data to file, and quit. Sending a
+  subsequent `SIGINT` will cause it to quit immediately.
+
 # Installation
 
 ### Dependencies:
