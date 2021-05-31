@@ -46,6 +46,7 @@ class GnssShare:
         self._socket_path = config['gnss_share'].get('socket')
         self._socket_owner_group = config['gnss_share'].get('group')
         self._device_path = config['gnss_share'].get('device_path')
+        self._device_baud = config['gnss_share'].get('device_baud_rate')
         self._agps_dir = config['gnss_share'].get('agps_directory')
         driver = config['gnss_share'].get('device_driver')
 
@@ -135,7 +136,8 @@ class GnssShare:
         while True:
             if len(self._open_connections) > 0:
                 if self._active_driver is None:
-                    self._active_driver = self._driver(self._device_path)
+                    self._active_driver = self._driver(self._device_path,
+                                                       self._device_baud)
                     await self._active_driver.open()
                 line = await self._active_driver.readline()
                 prefix = line.split(b',')[0]
