@@ -43,6 +43,8 @@ class GnssShare:
         self._active_driver = None
         # Holds the last NMEA location sentence retrieved from the device
         self._location = b""
+        # Set by signal handler to indicate AGPS data should be stored
+        self._signal_store = False
         self._socket_path = config['gnss_share'].get('socket')
         self._socket_owner_group = config['gnss_share'].get('group')
         self._device_path = config['gnss_share'].get('device_path')
@@ -134,6 +136,11 @@ class GnssShare:
         Main loop, for managing the gnss driver and getting data for clients
         """
         while True:
+            # Store AGPS if signaled to do so
+            if self._signal_store:
+                await self.store()
+                self._signal_store = False
+            # Service open connections
             if len(self._open_connections) > 0:
                 if self._active_driver is None:
                     self._active_driver = self._driver(self._device_path,
@@ -159,11 +166,10 @@ class GnssShare:
 
     async def _signal_receiver(self):
         """
-        Catch specific signals, and raise a SystemExit exception to stop
-        the parent nursery
+        Catch specific signals, and handle them
         """
-        with trio.open_signal_receiver(signal.SIGTERM,
-                                       signal.SIGINT) as signal_aiter:
+        with trio.open_signal_receiver(signal.SIGTERM, signal.SIGINT,
+                                       signal.SIGUSR1) as signal_aiter:
             async for sig in signal_aiter:
                 self.__log.info(f"Caught signal: {sig}")
                 if sig == signal.SIGINT:
@@ -171,7 +177,11 @@ class GnssShare:
                     self.__log.warn("App exit requested.. hit C-c to "
                                     "quit now.")
                     self.__log.warn("****************************************")
-                raise SystemExit
+                    raise SystemExit
+                elif sig == signal.SIGTERM:
+                    raise SystemExit
+                elif sig == signal.SIGUSR1:
+                    self._signal_store = True
 
     async def run(self):
         try:
