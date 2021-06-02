@@ -41,13 +41,16 @@ class STM_AGPS:
     async def readline(self):
         return await self._ser.readline()
 
+    async def _write(self, data):
+        await self._ser.write(data)
+
     async def _serial_write_cmd(self, cmd, expect=None):
         # number of times to poll serial output for ACK after sending command
         polling_loops = 50
 
         self.__log.info(f"cmd: {cmd}")
-        await self._ser.write(str(cmd).encode("ascii"))
-        await self._ser.write(b'\r\n')
+        await self._write(str(cmd).encode("ascii"))
+        await self._write(b'\r\n')
         if expect:
             for i in range(polling_loops):
                 line = await self._ser.readline()
