@@ -13,7 +13,7 @@ from .logger import LoggedException
 
 class STM_AGPS:
 
-    def __init__(self, serial_port):
+    def __init__(self, serial_port, baud=None):
         self.__log = logging.getLogger(__name__)
         if not os.path.exists(serial_port):
             raise LoggedException("Serial port does not exist: "
