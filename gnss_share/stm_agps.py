@@ -53,7 +53,7 @@ class STM_AGPS:
         await self._write(b'\r\n')
         if expect:
             for i in range(polling_loops):
-                line = await self._ser.readline()
+                line = await self.readline()
                 line = line[:-1]
                 self.__log.info(f"read: {line}")
                 if expect.encode("ascii") in line:
@@ -65,7 +65,7 @@ class STM_AGPS:
 
         # wait for cmd completion
         for i in range(polling_loops):
-            line = await self._ser.readline()
+            line = await self.readline()
             line = line[:-1]
             self.__log.info(f"read: {line}")
             if str(cmd).encode("ascii") in line:
@@ -85,7 +85,7 @@ class STM_AGPS:
                 if line.startswith(ack.encode()):
                     self.__log.info(line)
                     await f.write(line + b'\n')
-                line = await self._ser.readline()
+                line = await self.readline()
                 line = line[:-1]
 
     async def _load_from_file(self, ack, file):
