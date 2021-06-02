@@ -1,10 +1,15 @@
 # Copyright(c) 2021 by craftyguy "Clayton Craft" <clayton@craftyguy.net>
 # Distributed under GPLv3+ (see COPYING) WITHOUT ANY WARRANTY.
 import logging
-from trio_serial import SerialStream
 
 from .logger import LoggedException
 from .stm_agps import STM_AGPS
+
+try:
+    from trio_serial import SerialStream
+except ImportError:
+    print("warning: trio-serial not found, some drivers may not work "
+          "correctly")
 
 
 class STM_AGPS_SERIAL(STM_AGPS):
