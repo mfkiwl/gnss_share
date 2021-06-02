@@ -7,23 +7,19 @@ import os
 import pynmea2
 import trio
 from datetime import datetime
-from trio_serial import SerialStream
 
 from .logger import LoggedException
 
 
 class STM_AGPS:
 
-    def __init__(self, serial_port, baud=9600):
+    def __init__(self, serial_port):
         self.__log = logging.getLogger(__name__)
         if not os.path.exists(serial_port):
             raise LoggedException("Serial port does not exist: "
                                   f"{serial_port}")
         self._ser_port = serial_port
         self._location = b""
-        # reminder: bytearrays are mutable
-        self._buf = bytearray()
-        self._baud = baud
 
     async def __aenter__(self):
         await self.open()
@@ -37,39 +33,24 @@ class STM_AGPS:
 
     async def open(self):
         try:
-            self._ser = SerialStream(self._ser_port, baudrate=self._baud)
-            await self._ser.aopen()
+            self._ser = await trio.open_file(self._ser_port,
+                                             "w+b", buffering=0)
         except Exception as e:
             raise LoggedException(e)
 
     async def readline(self):
-        # based on this implementation of readline:
-        # https://github.com/pyserial/pyserial/issues/216#issuecomment-369414522
-        idx = self._buf.find(b'\n')
-        if idx >= 0:
-            line = self._buf[:idx+1]
-            self._buf = bytearray(self._buf[idx+1:])
-            return bytes(line)
-        while True:
-            data = await self._ser.receive_some(10)
-            idx = data.find(b'\n')
-            if idx >= 0:
-                line = self._buf + data[:idx+1]
-                self._buf = bytearray(data[idx+1:])
-                return bytes(line)
-            else:
-                self._buf.extend(data)
+        return await self._ser.readline()
 
     async def _serial_write_cmd(self, cmd, expect=None):
         # number of times to poll serial output for ACK after sending command
         polling_loops = 50
 
         self.__log.info(f"cmd: {cmd}")
-        await self._ser.send_all(str(cmd).encode("ascii"))
-        await self._ser.send_all(b'\r\n')
+        await self._ser.write(str(cmd).encode("ascii"))
+        await self._ser.write(b'\r\n')
         if expect:
             for i in range(polling_loops):
-                line = await self.readline()
+                line = await self._ser.readline()
                 line = line[:-1]
                 self.__log.info(f"read: {line}")
                 if expect.encode("ascii") in line:
@@ -81,7 +62,7 @@ class STM_AGPS:
 
         # wait for cmd completion
         for i in range(polling_loops):
-            line = await self.readline()
+            line = await self._ser.readline()
             line = line[:-1]
             self.__log.info(f"read: {line}")
             if str(cmd).encode("ascii") in line:
@@ -101,7 +82,7 @@ class STM_AGPS:
                 if line.startswith(ack.encode()):
                     self.__log.info(line)
                     await f.write(line + b'\n')
-                line = await self.readline()
+                line = await self._ser.readline()
                 line = line[:-1]
 
     async def _load_from_file(self, ack, file):
