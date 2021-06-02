@@ -129,7 +129,7 @@ class STM_AGPS:
         ephemeris_path = os.path.join(dir, 'ephemeris.txt')
 
         for file in [almanac_path, ephemeris_path]:
-            if not os.path.exists(almanac_path):
+            if not os.path.exists(file):
                 self.__log.warn(f"AGPS file not found: {file}")
                 self.__log.warn("*NOT* loading AGPS data")
                 return
