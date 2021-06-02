@@ -14,6 +14,7 @@ from logging.handlers import SysLogHandler
 
 from .logger import LoggedException
 from .stm_agps import STM_AGPS
+from .stm_agps_serial import STM_AGPS_SERIAL
 
 # List of NMEA prefixes to send to clients.
 # This list is the same one that geoclue monitors.
@@ -32,7 +33,8 @@ logger = logging.getLogger("gnss_share")
 
 class GnssShare:
     drivers = {
-        'stm': STM_AGPS
+        'stm': STM_AGPS,
+        'stm_serial': STM_AGPS_SERIAL,
     }
 
     def __init__(self, config):

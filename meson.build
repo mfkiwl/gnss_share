@@ -27,6 +27,7 @@ pkgsources = [
   'gnss_share/logger.py',
   'gnss_share/main.py',
   'gnss_share/stm_agps.py',
+  'gnss_share/stm_agps_serial.py',
 ]
 install_data(pkgsources, install_dir : moduledir)
 

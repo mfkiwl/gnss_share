@@ -36,7 +36,7 @@ following signals:
 ### Dependencies:
 
 - [Trio](https://github.com/python-trio/trio)
-- [Trio-Serial](https://github.com/joernheissler/trio-serial)
+- [Trio-Serial](https://github.com/joernheissler/trio-serial) (only for STM serial devices)
 - [pynmea2](https://github.com/Knio/pynmea2)
 
 This project uses meson to "build" and install things:
