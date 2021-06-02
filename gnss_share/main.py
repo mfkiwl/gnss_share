@@ -16,17 +16,6 @@ from .logger import LoggedException
 from .stm_agps import STM_AGPS
 from .stm_agps_serial import STM_AGPS_SERIAL
 
-# List of NMEA prefixes to send to clients.
-# This list is the same one that geoclue monitors.
-GNSS_PREFIXES = {
-    b"$GAGGA",  # Galieo
-    b"$GBGGA",  # BeiDou
-    b"$BDGGA",  # BeiDou
-    b"$GLGGA",  # GLONASS
-    b"$GNGGA",  # GNSS (combined)
-    b"$GPGGA",  # GPS, SBAS, QZSS
-}
-
 # new root logger
 logger = logging.getLogger("gnss_share")
 
@@ -44,7 +33,7 @@ class GnssShare:
         # Reference to open device/driver
         self._active_driver = None
         # Holds the last NMEA location sentence retrieved from the device
-        self._location = b""
+        self._sentence = b""
         # Set by signal handler to indicate AGPS data should be stored
         self._signal_store = False
         self._socket_path = config['gnss_share'].get('socket')
@@ -83,12 +72,12 @@ class GnssShare:
         async with self._driver(self._device_path) as driver:
             await driver.store(self._agps_dir)
 
-    async def _get_location(self):
-        """ Returns last received location from gnss driver, or None """
+    async def _get_sentence(self):
+        """ Returns last received sentence from gnss driver, or None """
         if not self._active_driver:
             self.__log.warn("Tried to read from inactive device!")
             return b""
-        return self._location
+        return self._sentence
 
     async def _handle_socket_connection(self, conn):
         """ Handler for client connections over a socket """
@@ -97,9 +86,9 @@ class GnssShare:
         self._open_connections.append(conn)
         try:
             while True:
-                location = await self._get_location()
-                if location:
-                    await conn.send_all(location)
+                sentence = await self._get_sentence()
+                if sentence:
+                    await conn.send_all(sentence)
                 # Send data to clients at this rate.
                 # TODO: is this too fast or too slow?
                 await trio.sleep(1)
@@ -148,10 +137,7 @@ class GnssShare:
                     self._active_driver = self._driver(self._device_path,
                                                        self._device_baud)
                     await self._active_driver.open()
-                line = await self._active_driver.readline()
-                prefix = line.split(b',')[0]
-                if prefix in GNSS_PREFIXES:
-                    self._location = line
+                self._sentence = await self._active_driver.readline()
                 # polling loop delay when clients are connected
                 # TODO: is this adequate? Any faster and CPU utilization
                 # climbs...
