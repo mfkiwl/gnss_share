@@ -18,8 +18,6 @@ class STM_AGPS_SERIAL(STM_AGPS):
         super().__init__(serial_port)
         self.__log = logging.getLogger(__name__)
         self._baud = baud
-        # reminder: bytearrays are mutable
-        self._buf = bytearray()
 
     async def __aenter__(self):
         await self.open()

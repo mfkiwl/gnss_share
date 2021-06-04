@@ -20,6 +20,7 @@ class STM_AGPS:
                                   f"{serial_port}")
         self._ser_port = serial_port
         self._location = b""
+        # reminder: bytearrays are mutable
         self._buf = bytearray()
 
     async def __aenter__(self):
