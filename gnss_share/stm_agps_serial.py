@@ -55,7 +55,7 @@ class STM_AGPS_SERIAL(STM_AGPS):
                 self._buf = bytearray(data[idx+1:])
                 return bytes(line)
             else:
-                self._buf.extend(data + b'_')
+                self._buf.extend(data)
             # sleep to prevent spinning faster than the serial device can write
             await trio.sleep(0.1)
 
