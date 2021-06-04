@@ -59,7 +59,7 @@ class STM_AGPS:
             else:
                 self._buf.extend(data)
             # sleep to prevent spinning faster than the device can write
-            await trio.sleep(0.5)
+            await trio.sleep(0.1)
 
     async def _write(self, data):
         await self._ser.write(data)
