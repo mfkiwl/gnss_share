@@ -20,6 +20,7 @@ class STM_AGPS:
                                   f"{serial_port}")
         self._ser_port = serial_port
         self._location = b""
+        self._buf = bytearray()
 
     async def __aenter__(self):
         await self.open()
@@ -39,7 +40,24 @@ class STM_AGPS:
             raise LoggedException(e)
 
     async def readline(self):
-        return await self._ser.readline()
+        # based on this implementation of readline:
+        # https://github.com/pyserial/pyserial/issues/216#issuecomment-369414522
+        idx = self._buf.find(b'\n')
+        if idx >= 0:
+            line = self._buf[:idx+1]
+            self._buf = bytearray(self._buf[idx+1:])
+            return bytes(line)
+        while True:
+            data = await self._ser.receive_some(40)
+            idx = data.find(b'\n')
+            if idx >= 0:
+                line = self._buf + data[:idx+1]
+                self._buf = bytearray(data[idx+1:])
+                return bytes(line)
+            else:
+                self._buf.extend(data)
+            # sleep to prevent spinning faster than the device can write
+            await trio.sleep(0.5)
 
     async def _write(self, data):
         await self._ser.write(data)
