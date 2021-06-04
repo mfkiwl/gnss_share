@@ -32,8 +32,6 @@ class GnssShare:
         self._open_connections = []
         # Reference to open device/driver
         self._active_driver = None
-        # Holds the last NMEA location sentence retrieved from the device
-        self._sentence = b""
         # Set by signal handler to indicate AGPS data should be stored
         self._signal_store = False
         self._socket_path = config['gnss_share'].get('socket')
@@ -72,26 +70,16 @@ class GnssShare:
         async with self._driver(self._device_path) as driver:
             await driver.store(self._agps_dir)
 
-    async def _get_sentence(self):
-        """ Returns last received sentence from gnss driver, or None """
-        if not self._active_driver:
-            self.__log.warn("Tried to read from inactive device!")
-            return b""
-        return self._sentence
-
     async def _handle_socket_connection(self, conn):
         """ Handler for client connections over a socket """
         self.__log.info(f"Got new connection from client on "
                         f"{conn.socket.getsockname()}")
         self._open_connections.append(conn)
         try:
-            while True:
-                sentence = await self._get_sentence()
-                if sentence:
-                    await conn.send_all(sentence)
-                # Send data to clients at this rate.
-                # TODO: is this too fast or too slow?
-                await trio.sleep(1)
+            # loop on connection until it's closed. sending data is handled
+            # elsewhere
+            async for _ in conn:
+                pass
         except trio.BrokenResourceError:
             self.__log.info("A socket client disconnected")
         finally:
@@ -137,11 +125,9 @@ class GnssShare:
                     self._active_driver = self._driver(self._device_path,
                                                        self._device_baud)
                     await self._active_driver.open()
-                self._sentence = await self._active_driver.readline()
-                # polling loop delay when clients are connected
-                # TODO: is this adequate? Any faster and CPU utilization
-                # climbs...
-                await trio.sleep(.2)
+                sentence = await self._active_driver.readline()
+                for conn in self._open_connections:
+                    await conn.send_all(sentence)
             else:
                 if self._active_driver is not None:
                     self.__log.info("No more clients connected, closing "
