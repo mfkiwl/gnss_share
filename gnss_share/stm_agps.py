@@ -36,6 +36,7 @@ class STM_AGPS:
         try:
             self._ser = await trio.open_file(self._ser_port,
                                              "w+b", buffering=0)
+            self._ser_read_cmd = self._ser.read
         except Exception as e:
             raise LoggedException(e)
 
@@ -48,7 +49,7 @@ class STM_AGPS:
             self._buf = bytearray(self._buf[idx+1:])
             return bytes(line)
         while True:
-            data = await self._ser.receive_some(40)
+            data = await self._ser_read_cmd(40)
             idx = data.find(b'\n')
             if idx >= 0:
                 line = self._buf + data[:idx+1]

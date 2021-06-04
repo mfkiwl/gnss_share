@@ -35,6 +35,8 @@ class STM_AGPS_SERIAL(STM_AGPS):
         try:
             self._ser = SerialStream(self._ser_port, baudrate=self._baud)
             await self._ser.aopen()
+            # command to read from the device
+            self._ser_read_cmd = self._ser.receive_some
         except Exception as e:
             raise LoggedException(e)
 
