@@ -1,6 +1,7 @@
 # Copyright(c) 2021 by craftyguy "Clayton Craft" <clayton@craftyguy.net>
 # Distributed under GPLv3+ (see COPYING) WITHOUT ANY WARRANTY.
 import logging
+import trio
 
 from .logger import LoggedException
 from .stm_agps import STM_AGPS
@@ -47,14 +48,16 @@ class STM_AGPS_SERIAL(STM_AGPS):
             self._buf = bytearray(self._buf[idx+1:])
             return bytes(line)
         while True:
-            data = await self._ser.receive_some(10)
+            data = await self._ser.receive_some(40)
             idx = data.find(b'\n')
             if idx >= 0:
                 line = self._buf + data[:idx+1]
                 self._buf = bytearray(data[idx+1:])
                 return bytes(line)
             else:
-                self._buf.extend(data)
+                self._buf.extend(data + b'_')
+            # sleep to prevent spinning faster than the serial device can write
+            await trio.sleep(0.1)
 
     async def _write(self, data):
         await self._ser.send_all(data)
