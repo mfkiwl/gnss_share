@@ -127,7 +127,13 @@ class GnssShare:
                     await self._active_driver.open()
                 sentence = await self._active_driver.readline()
                 for conn in self._open_connections:
-                    await conn.send_all(sentence)
+                    try:
+                        await conn.send_all(sentence)
+                    # Sometimes a disconnect isn't caught in time by the
+                    # handle_connection loop
+                    except trio.BrokenResourceError:
+                        self.__log.info("Unable to send to socket client, "
+                                        "maybe connection closed?")
             else:
                 if self._active_driver is not None:
                     self.__log.info("No more clients connected, closing "
