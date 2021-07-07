@@ -97,7 +97,8 @@ class STM_AGPS:
         msg = pynmea2.GGA('P', cmd, ())
         result, line = await self._serial_write_cmd(msg, ack)
         if not result:
-            raise LoggedException("Unable to get data from device")
+            self.__log.warn(f"No data returned to create {file}")
+            return
         async with await trio.open_file(file, 'wb') as f:
             while True:
                 if cmd.encode() in line:
