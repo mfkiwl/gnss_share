@@ -1,6 +1,6 @@
 project(
 	'gnss_share',
-	version : '0.2',
+	version : '0.3',
 	meson_version : '>= 0.51.0',
 )
 
