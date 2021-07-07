@@ -133,18 +133,19 @@ class STM_AGPS:
         almanac_path = os.path.join(dir, 'almanac.txt')
         ephemeris_path = os.path.join(dir, 'ephemeris.txt')
 
-        for file in [almanac_path, ephemeris_path]:
-            if not os.path.exists(file):
-                self.__log.warn(f"AGPS file not found: {file}")
-                self.__log.warn("*NOT* loading AGPS data")
-                return
-
         # reset device in case it is stuck, and set time
         await self.reset()
         await self.set_time()
 
-        await self._load_almanac(almanac_path)
-        await self._load_ephemeris(ephemeris_path)
+        if not os.path.exists(almanac_path):
+            self.__log.warn(f"AGPS almanac file not found: {almanac_path}")
+        else:
+            await self._load_almanac(almanac_path)
+
+        if not os.path.exists(ephemeris_path):
+            self.__log.warn(f"AGPS ephemeris file not found: {ephemeris_path}")
+        else:
+            await self._load_ephemeris(ephemeris_path)
 
     async def _store_ephemeris(self, file='ephemeris.txt'):
         await self._store_to_file('STMDUMPEPHEMS', '$PSTMEPHEM', file)
