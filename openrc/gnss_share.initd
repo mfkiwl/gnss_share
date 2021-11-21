@@ -2,10 +2,8 @@
 # Copyright 2021 Clayton Craft
 # SPDX-License-Identifier: GPL-3.0-or-later
 command=/usr/bin/gnss_share
-command_args="--syslog -v"
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"
-retry="TERM/60/KILL/5"
 
 depend () {
 	before geoclue
