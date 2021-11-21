@@ -21,6 +21,8 @@ See this file for descriptions of supported options.
 
 Run with `-h` to see the list of supported command line options.
 
+
+### NOTE: the following signal functionality is not yet implemented:
 In addition to the command line options, this application will respond to the
 following signals:
 
@@ -35,37 +37,17 @@ following signals:
 
 ### Dependencies:
 
-- [Trio](https://github.com/python-trio/trio)
-- [Trio-Serial](https://github.com/joernheissler/trio-serial) (only for STM serial devices)
-- [pynmea2](https://github.com/Knio/pynmea2)
+- Go
 
-This project uses meson to "build" and install things:
+Build the `gnss_share` application with:
 
 ```
-$ meson _build
-$ meson install -C _build
-```
-
-To run locally from the source repo:
-
-```
-$ python3 -m gnss_share
+$ go build ./cmd/gnss_share
 ```
 
 # Development
 
 ### New GNSS device support
 
-Support for additional gnss devices can be added by implementing a new 'driver', see `stm_agps.py` for an example.
-At a minimum, `gnss_share` expects that the following methods are implemented in the driver:
-
-- context manager support (`__aenter__`, `__aexit__`)
-- `load(directory: str) -> None`
-- `store(directory: str) -> None`
-- `open() -> None`
-- `close() -> None`
-- `readline() -> bytes`
-- `reset() -> None`
-- `settime() -> None`
-
-This application uses the Python Trio library for async coroutines, so blocking tasks in the driver must be made async.
+Support for additional gnss devices can be added by implementing the
+`gnss_driver` interface, see `internal/gnss/gnss.go` for specifics.
