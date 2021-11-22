@@ -1,0 +1,45 @@
+---
+
+# global settings
+image: alpine:edge
+
+stages:
+  - lint
+  - build
+
+# defaults for "only"
+# We need to run the CI jobs in a "merge request specific context", if CI is
+# running in a merge request. Otherwise the environment variable that holds the
+# merge request ID is not available. This means, we must set the "only"
+# variable accordingly - and if we only do it for one job, all other jobs will
+# not get executed. So have the defaults here, and use them in all jobs that
+# should run on both the master branch, and in merge requests.
+# https://docs.gitlab.com/ee/ci/merge_request_pipelines/index.html#excluding-certain-jobs
+.only-default: &only-default
+  only:
+    - master
+    - merge_requests
+    - tags
+
+# device documentation
+gofmt linting:
+  stage: lint
+  allow_failure: true
+  <<: *only-default
+  before_script:
+    # specific mirror used because staticcheck hasn't made it to the other mirrors yet...
+    - apk -q update --repository http://dl-4.alpinelinux.org/alpine/edge/testing
+    - apk -q add --repository http://dl-4.alpinelinux.org/alpine/edge/testing go staticcheck
+  script:
+    - .ci/check_linting.sh
+
+build:
+  stage: build
+  <<: *only-default
+  before_script:
+    - apk -q add go
+  script:
+    - go build -v ./cmd/gnss_share
+    - go test ./...
+  artifacts:
+    expire_in: 1 week
