@@ -19,7 +19,17 @@ See this file for descriptions of supported options.
 
 # Usage
 
-Run with `-h` to see the list of supported command line options.
+```
+usage: gnss_share COMMAND [OPTION...]
+Commands:
+  [none]        The default behavior if no command is specified is to run in server mode.
+  store         Store almanac and ephemerides data and quit.
+  load          Load almanac and ephemerides data and quit.
+Options:
+  -c string
+        Configuration file to use. (default "/etc/gnss_share.conf")
+  -h    Print help and quit.
+```
 
 
 ### NOTE: the following signal functionality is not yet implemented:

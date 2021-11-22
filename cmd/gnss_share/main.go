@@ -31,7 +31,7 @@ func main() {
 	flag.Usage = func() {
 		fmt.Println("usage: gnss_share COMMAND [OPTION...]")
 		fmt.Println("Commands:")
-		fmt.Printf("  %-12s\t%s\n", "[none]", "The default behavior if no command is specified is to run in daemon mode.")
+		fmt.Printf("  %-12s\t%s\n", "[none]", "The default behavior if no command is specified is to run in \"server\" mode.")
 		fmt.Printf("  %-12s\t%s\n", "store", "Store almanac and ephemerides data and quit.")
 		fmt.Printf("  %-12s\t%s\n", "load", "Load almanac and ephemerides data and quit.")
 		fmt.Println("Options:")
