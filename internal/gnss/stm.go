@@ -213,6 +213,8 @@ func (s *StmCommon) Load(dir string) (err error) {
 	return
 }
 
+//lint:ignore U1000 - Unused currently, but want to keep this around for use
+//later
 func (s *StmCommon) restoreParams() (err error) {
 	_, err = s.sendCmd(nmea.Sentence{Type: "PSTMRESTOREPAR"}.String(), true)
 	if err != nil {
