@@ -1,3 +1,6 @@
+# NOTE: This branch is deprecated
+
+
 An app for sharing GNSS location data, with support multiple clients and
 loading/saving AGPS data.
 
