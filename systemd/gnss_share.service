@@ -4,7 +4,7 @@ Before=gpsd.service gpsd.socket geoclue.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/gnss_share -v
+ExecStart=/usr/bin/gnss_share
 
 [Install]
 WantedBy=multi-user.target
