@@ -31,17 +31,16 @@ Options:
   -h    Print help and quit.
 ```
 
-
-### NOTE: the following signal functionality is not yet implemented:
 In addition to the command line options, this application will respond to the
-following signals:
+following signals when in "server" mode:
 
-- `SIGUSR` - The application will store AGPS data to file, and continue running
+- `SIGUSR1` - The application will load AGPS data from the directory
+  `agps_directory` specified in the configuration file, and continue running
+  afterward.
 
-- `SIGTERM` - Application will store AGPS data to file, and quit
-
-- `SIGINT` - Application will store AGPS data to file, and quit. Sending a
-  subsequent `SIGINT` will cause it to quit immediately.
+- `SIGUSR2` - The application will store AGPS data to the directory
+  `agps_directory` specified in the configuration file, and continue running
+  afterward.
 
 # Installation
 
