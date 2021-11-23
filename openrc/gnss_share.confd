@@ -1,0 +1,2 @@
+#error_logger="logger -t gnss_share -p daemon.error"
+#output_logger="logger -t gnss_share -p daemon.info"
