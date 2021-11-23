@@ -13,8 +13,8 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/tarm/serial"
 	"gitlab.com/postmarketOS/gnss_share/internal/nmea"
-	"go.bug.st/serial"
 )
 
 type StmCommon struct {
@@ -33,14 +33,15 @@ type Stm struct {
 
 type StmSerial struct {
 	StmCommon
-	serConf serial.Mode
-	serPort serial.Port
+	serConf serial.Config
+	serPort *serial.Port
 }
 
 func NewStmSerial(path string, baud int) *StmSerial {
 	s := &StmSerial{
-		serConf: serial.Mode{
-			BaudRate: baud,
+		serConf: serial.Config{
+			Name: path,
+			Baud: baud,
 		},
 		StmCommon: StmCommon{
 			path: path,
@@ -48,7 +49,7 @@ func NewStmSerial(path string, baud int) *StmSerial {
 	}
 
 	s.StmCommon.open = func() (err error) {
-		s.serPort, err = serial.Open(s.path, &s.serConf)
+		s.serPort, err = serial.OpenPort(&s.serConf)
 		if err != nil {
 			err = fmt.Errorf("gnss/StmSerial.Open(): %w", err)
 			return

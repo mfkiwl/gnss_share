@@ -4,12 +4,7 @@ go 1.17
 
 require (
 	github.com/pelletier/go-toml v1.9.4
-	go.bug.st/serial v1.3.3
+	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
 )
 
-require (
-	github.com/creack/goselect v0.1.2 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/stretchr/testify v1.5.1 // indirect
-	golang.org/x/sys v0.0.0-20211116061358-0a5406a5449c // indirect
-)
+require golang.org/x/sys v0.0.0-20211116061358-0a5406a5449c // indirect
