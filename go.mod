@@ -3,7 +3,7 @@ module gitlab.com/postmarketOS/gnss_share
 go 1.17
 
 require (
-	github.com/subpop/go-ini v0.1.4
+	github.com/pelletier/go-toml v1.9.4
 	go.bug.st/serial v1.3.3
 )
 

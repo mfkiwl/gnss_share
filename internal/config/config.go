@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"os"
 
-	ini "github.com/subpop/go-ini"
+	toml "github.com/pelletier/go-toml"
 )
 
 type Config struct {
-	Socket     string `ini:"socket"`
-	OwnerGroup string `ini:"group"`
-	Driver     string `ini:"device_driver"`
-	DevicePath string `ini:"device_path"`
-	BaudRate   int    `ini:"device_baud_rate"`
-	CachePath  string `ini:"agps_directory"`
+	Socket     string `toml:"socket"`
+	OwnerGroup string `toml:"group"`
+	Driver     string `toml:"device_driver"`
+	DevicePath string `toml:"device_path"`
+	BaudRate   int    `toml:"device_baud_rate"`
+	CachePath  string `toml:"agps_directory"`
 }
 
 func Parse(file string) (c *Config, err error) {
@@ -26,10 +26,9 @@ func Parse(file string) (c *Config, err error) {
 		return
 	}
 
-	o := ini.Options{AllowNumberSignComments: true}
-
 	c = &Config{}
-	if err = ini.UnmarshalWithOptions(contents, c, o); err != nil {
+
+	if err = toml.Unmarshal(contents, c); err != nil {
 		err = fmt.Errorf("config.Parse(): %w", err)
 	}
 
