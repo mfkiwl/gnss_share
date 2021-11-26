@@ -56,7 +56,7 @@ func main() {
 
 	switch conf.Driver {
 	case "stm":
-		driver = gnss.NewStm(conf.DevicePath)
+		driver = gnss.NewStmGnss(conf.DevicePath)
 	case "stm_serial":
 		driver = gnss.NewStmSerial(conf.DevicePath, conf.BaudRate)
 	}

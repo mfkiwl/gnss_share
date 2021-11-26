@@ -17,20 +17,29 @@ import (
 	"gitlab.com/postmarketOS/gnss_share/internal/nmea"
 )
 
+type Stm interface {
+	open() (err error)
+	close() (err error)
+	ready() (bool, error)
+}
+
 type StmCommon struct {
+	Stm
 	path    string
 	scanner *bufio.Scanner
 	writer  io.Writer
-	open    func() (err error)
-	close   func() (err error)
-	ready   func() (bool, error)
 }
 
-type Stm struct {
+// StmGnss is a STM module connected through the GNSS subsystem in the Linux
+// kernel. It is commonly available through /dev/gnssN
+type StmGnss struct {
 	StmCommon
 	device *os.File
 }
 
+// StmSerial is a STM module accessed directly over a serial interface on the
+// system, e.g. via /dev/ttyN or /dev/ttyUSBN. It is *not* using the GNSS
+// subsystem in the Linux kernel.
 type StmSerial struct {
 	StmCommon
 	serConf serial.Config
@@ -38,7 +47,7 @@ type StmSerial struct {
 }
 
 func NewStmSerial(path string, baud int) *StmSerial {
-	s := &StmSerial{
+	s := StmSerial{
 		serConf: serial.Config{
 			Name: path,
 			Baud: baud,
@@ -47,100 +56,102 @@ func NewStmSerial(path string, baud int) *StmSerial {
 			path: path,
 		},
 	}
+	s.StmCommon.Stm = &s
 
-	s.StmCommon.open = func() (err error) {
-		s.serPort, err = serial.OpenPort(&s.serConf)
-		if err != nil {
-			err = fmt.Errorf("gnss/StmSerial.Open(): %w", err)
-			return
-		}
-		s.scanner = bufio.NewScanner(s.serPort)
-		s.writer = s.serPort
-
-		return
-	}
-
-	s.StmCommon.close = func() (err error) {
-		if s.serPort != nil {
-			err = s.serPort.Close()
-			if err != nil {
-				err = fmt.Errorf("gnss/StmSerial.Close: %w", err)
-				return
-			}
-		}
-		return
-	}
-
-	s.StmCommon.ready = func() (bool, error) {
-		return true, nil
-	}
-
-	return s
+	return &s
 }
 
-func NewStm(path string) *Stm {
-	s := &Stm{
+func (s *StmSerial) open() (err error) {
+	s.serPort, err = serial.OpenPort(&s.serConf)
+	if err != nil {
+		err = fmt.Errorf("gnss/StmSerial.Open(): %w", err)
+		return
+	}
+	s.scanner = bufio.NewScanner(s.serPort)
+	s.writer = s.serPort
+
+	return
+}
+
+func (s *StmSerial) close() (err error) {
+	if s.serPort != nil {
+		err = s.serPort.Close()
+		if err != nil {
+			err = fmt.Errorf("gnss/StmSerial.Close: %w", err)
+			return
+		}
+	}
+	return
+}
+
+func (s *StmSerial) ready() (bool, error) {
+	return true, nil
+}
+
+func NewStmGnss(path string) *StmGnss {
+	s := StmGnss{
 		StmCommon: StmCommon{
 			path: path,
 		},
 	}
+	s.StmCommon.Stm = &s
 
-	s.StmCommon.open = func() (err error) {
-		// Using syscall.Open will open the file in non-pollable mode, which
-		// results in a significant reduction in CPU usage on ARM64 systems,
-		// and no noticeable impact on x86_64. We don't need to poll the file
-		// since it's just a constant stream of new data from the kernel's GNSS
-		// subsystem
-		fd, err := syscall.Open(s.path, os.O_RDWR, 0666)
-		if err != nil {
-			err = fmt.Errorf("gnss/Stm.Open(): %w", err)
-			return
-		}
-		s.device = os.NewFile(uintptr(fd), s.path)
+	return &s
+}
 
-		s.scanner = bufio.NewScanner(s.device)
-		s.writer = s.device
-
-		if ready, err := s.ready(); !ready {
-			return fmt.Errorf("gnss/StmCommon.Start: device not ready: %s", err)
-		}
+func (s *StmGnss) open() (err error) {
+	// Using syscall.Open will open the file in non-pollable mode, which
+	// results in a significant reduction in CPU usage on ARM64 systems,
+	// and no noticeable impact on x86_64. We don't need to poll the file
+	// since it's just a constant stream of new data from the kernel's GNSS
+	// subsystem
+	fd, err := syscall.Open(s.path, os.O_RDWR, 0666)
+	if err != nil {
+		err = fmt.Errorf("gnss/Stm.Open(): %w", err)
 		return
 	}
+	s.device = os.NewFile(uintptr(fd), s.path)
 
-	s.StmCommon.close = func() (err error) {
-		err = s.device.Close()
-		if err != nil {
-			err = fmt.Errorf("gnss/Stm.Close: %w", err)
-		}
-		return
+	s.scanner = bufio.NewScanner(s.device)
+	s.writer = s.device
+
+	if ready, err := s.ready(); !ready {
+		return fmt.Errorf("gnss/StmCommon.Start: device not ready: %s", err)
 	}
+	return
+}
 
-	s.StmCommon.ready = func() (bool, error) {
-		// device sends this message when it has booted
-		resp := nmea.Sentence{
-			Type: "GPTXT",
-			Data: []string{"DEFAULT LIV CONFIGURATION"},
-		}.String()
-
-		tries := 100
-		c := 0
-		for s.scanner.Scan() {
-			if c > tries {
-				return false, fmt.Errorf("gnss/StmCommon.open: timed out waiting for device")
-			}
-			line := s.scanner.Text()
-			// Contains() is used because sometimes the device will prefix a
-			// message with a NULL byte or do other undocumented crazy things like
-			// that.
-			if strings.Contains(line, resp) {
-				return true, nil
-			}
-			c++
-		}
-		return false, nil
+func (s *StmGnss) close() (err error) {
+	err = s.device.Close()
+	if err != nil {
+		err = fmt.Errorf("gnss/Stm.Close: %w", err)
 	}
+	return
+}
 
-	return s
+func (s *StmGnss) ready() (bool, error) {
+	// device sends this message when it has booted
+	resp := nmea.Sentence{
+		Type: "GPTXT",
+		Data: []string{"DEFAULT LIV CONFIGURATION"},
+	}.String()
+
+	tries := 100
+	c := 0
+	for s.scanner.Scan() {
+		if c > tries {
+			return false, fmt.Errorf("gnss/StmCommon.open: timed out waiting for device")
+		}
+		line := s.scanner.Text()
+		// Contains() is used because sometimes the device will prefix a
+		// message with a NULL byte or do other undocumented crazy things like
+		// that.
+		if strings.Contains(line, resp) {
+			return true, nil
+		}
+		c++
+	}
+	return false, nil
 }
 
 func (s *StmCommon) Start(sendCh chan<- []byte, stop <-chan bool, errCh chan<- error) {
