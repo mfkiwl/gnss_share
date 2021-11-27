@@ -22,6 +22,7 @@ type Stm interface {
 	close() (err error)
 	ready() (bool, error)
 	Restore() (err error)
+	GetParam(cdbId int) (val uint64, err error)
 }
 
 type StmCommon struct {
@@ -223,6 +224,50 @@ func (s *StmCommon) Load(dir string) (err error) {
 		return
 	}
 
+	return
+}
+
+// GetParam returns the parameter value for the given CDB ID. See the STM Teseo
+// Liv3f gps software manual sections for PSTMSETPAR and relevant CBD for
+// possible IDs/values to use.
+func (s *StmCommon) GetParam(cdbId int) (val uint64, err error) {
+	if err = s.open(); err != nil {
+		err = fmt.Errorf("gnss/stmCommon.GetParam: %w", err)
+		return
+	}
+	defer s.close()
+
+	s.pause()
+	defer s.resume()
+
+	out, err := s.sendCmd(nmea.Sentence{Type: "PSTMGETPAR", Data: []string{fmt.Sprintf("%d", cdbId)}}.String(), true)
+	if err != nil {
+		err = fmt.Errorf("gnss/stmCommon.GetParam: %w", err)
+		return
+	}
+
+	for _, l := range out {
+		if strings.Contains(l, "PSTMGETPARERROR") {
+			err = fmt.Errorf("gnss/StmCommon.GetParam: PSTMGETPARERROR returned by module")
+			return
+		}
+		if strings.Contains(l, fmt.Sprintf("PSTMSETPAR,%d", cdbId)) {
+			msg := strings.Split(l, "*")[0]
+			fields := strings.Split(msg, ",")
+			if len(fields) < 3 {
+				err = fmt.Errorf("gnss/StmCommon.GetParam: not enough fields in response from module")
+				return
+			}
+			// Note: ParseUint with 'base' set to 0 allows it to 'autodetect'
+			// base16 when the string is prefixed with 0x
+			if val, err = strconv.ParseUint(fields[2], 0, 64); err != nil {
+				err = fmt.Errorf("gnss/StmCommon.GetParam: unable to parse response from module: %w", err)
+				return
+			}
+			return
+		}
+	}
+	err = fmt.Errorf("gnss/StmCommon.GetParam: no response sent by module")
 	return
 }
 
