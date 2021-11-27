@@ -21,6 +21,7 @@ type Stm interface {
 	open() (err error)
 	close() (err error)
 	ready() (bool, error)
+	Restore() (err error)
 }
 
 type StmCommon struct {
@@ -225,11 +226,19 @@ func (s *StmCommon) Load(dir string) (err error) {
 	return
 }
 
-//lint:ignore U1000 - Unused currently, but want to keep this around for use
-//later
-func (s *StmCommon) restoreParams() (err error) {
+func (s *StmCommon) Restore() (err error) {
+	if err = s.open(); err != nil {
+		err = fmt.Errorf("gnss/stmCommon.GetParam: %w", err)
+		return
+	}
+
+	defer s.close()
+	s.pause()
+	// resume only on error, since system is reset on success
+
 	_, err = s.sendCmd(nmea.Sentence{Type: "PSTMRESTOREPAR"}.String(), true)
 	if err != nil {
+		s.resume()
 		return
 	}
 	_, err = s.sendCmd(nmea.Sentence{Type: "PSTMSRR"}.String(), false)
