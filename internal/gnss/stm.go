@@ -165,11 +165,6 @@ func (s *StmCommon) Start(sendCh chan<- []byte, stop <-chan bool, errCh chan<- e
 	}
 	defer s.close()
 
-	if err := s.configureMessages(); err != nil {
-		errCh <- err
-		return
-	}
-
 scanLoop: // used to break out of select when a 'stop' is received
 	for s.scanner.Scan() {
 		select {
