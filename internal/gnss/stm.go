@@ -22,6 +22,7 @@ type Stm interface {
 	close() (err error)
 	ready() (bool, error)
 	Restore() (err error)
+	SetParam(cdbId int, value uint64) (err error)
 	GetParam(cdbId int) (val uint64, err error)
 }
 
@@ -271,6 +272,52 @@ func (s *StmCommon) GetParam(cdbId int) (val uint64, err error) {
 	return
 }
 
+// SetParam sets parameters in the given configuration data block. See the STM
+// Teseo Liv3f gps software manual sections for PSTMSETPAR and relevant CBD for
+// possible IDs/values to use.
+func (s *StmCommon) SetParam(cdbId int, value uint64) (err error) {
+	if err = s.open(); err != nil {
+		err = fmt.Errorf("gnss/stmCommon.GetParam: %w", err)
+		return
+	}
+	defer s.close()
+
+	s.pause()
+	// resume only on error, since system is reset on success
+
+	msgListCmd := nmea.Sentence{
+		Type: "PSTMSETPAR",
+		Data: []string{
+			fmt.Sprintf("%d%d", 3, cdbId),
+			fmt.Sprintf("0x%08x", value),
+			// TODO: exposing the OR and AND functionality in the 4th optional
+			// parameter to STMSETPAR would be nice
+			fmt.Sprintf("%d", 0),
+		},
+	}
+	out, err := s.sendCmd(msgListCmd.String(), true)
+	if err != nil {
+		err = fmt.Errorf("gnss/StmCommon.SetParam: %w", err)
+		s.resume()
+		return
+	}
+
+	for _, o := range out {
+		if strings.Contains(o, "PSTMSETPARERROR") {
+			s.resume()
+			return fmt.Errorf("error setting parameter at conf block %d, id %d: %d", 1, cdbId, value)
+		}
+	}
+
+	_, err = s.sendCmd(nmea.Sentence{Type: "PSTMSAVEPAR"}.String(), true)
+	if err != nil {
+		s.resume()
+		return
+	}
+	_, err = s.sendCmd(nmea.Sentence{Type: "PSTMSRR"}.String(), false)
+	return
+}
+
 func (s *StmCommon) Restore() (err error) {
 	if err = s.open(); err != nil {
 		err = fmt.Errorf("gnss/stmCommon.GetParam: %w", err)
@@ -338,46 +385,21 @@ func (s *StmCommon) configureMessages() (err error) {
 		msgList |= 1 << 6 // GPRMC
 		// // 1 sets for the current config block (not persistent)
 		// // 201 is for setting the lower 32-bits
-		err = s.setParam(3, 201, msgList, 0)
+		err = s.SetParam(201, msgList)
 		if err != nil {
 			// not fatal
 			fmt.Println(err)
 		}
 		// clear upper 32-bits, since we don't want to enable any messages in that
 		// range
-		err = s.setParam(3, 228, 0, 0)
+		err = s.SetParam(228, 0)
 
 		// increase the reporting period to reduce CPU usage from processing new
 		// messages
-		err = s.setParam(3, 303, 1, 0)
+		err = s.SetParam(303, 1)
 
 		_, err = s.sendCmd(nmea.Sentence{Type: "PSTMSAVEPAR"}.String(), true)
 		_, err = s.sendCmd(nmea.Sentence{Type: "PSTMSRR"}.String(), false)
-	}
-
-	return
-}
-
-// setParam sets parameters in the given configuration data block. See the STM
-// Teseo Liv3f gps software manual sections for PSTMSETPAR and relevant CBD for
-// possible IDs/values to use.
-func (s *StmCommon) setParam(confBlock int, id int, value uint64, mode int) (err error) {
-
-	msgListCmd := nmea.Sentence{
-		Type: "PSTMSETPAR",
-		Data: []string{
-			fmt.Sprintf("%d%d", confBlock, id),
-			// fmt.Sprintf("%d", id),
-			fmt.Sprintf("0x%08x", value),
-			fmt.Sprintf("%d", mode),
-		},
-	}
-	out, err := s.sendCmd(msgListCmd.String(), true)
-
-	for _, o := range out {
-		if strings.Contains(o, "PSTMSETPARERROR") {
-			return fmt.Errorf("error setting parameter at conf block %d, id %d: %d", confBlock, id, value)
-		}
 	}
 
 	return
