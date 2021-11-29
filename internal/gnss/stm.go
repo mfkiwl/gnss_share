@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -254,12 +255,22 @@ func (s *StmCommon) GetParam(cdbId int) (val uint64, err error) {
 				err = fmt.Errorf("gnss/StmCommon.GetParam: not enough fields in response from module")
 				return
 			}
-			// Note: ParseUint with 'base' set to 0 allows it to 'autodetect'
-			// base16 when the string is prefixed with 0x
-			if val, err = strconv.ParseUint(fields[2], 0, 64); err != nil {
-				err = fmt.Errorf("gnss/StmCommon.GetParam: unable to parse response from module: %w", err)
+			// try to parse with big.Parse first, sometimes module response is
+			// in scientific notation...
+			var valBig *big.Float
+			valBig, _, err = big.ParseFloat(fields[2], 10, 0, big.ToNearestEven)
+			if err == nil {
+				val, _ = valBig.Uint64()
 				return
 			}
+			// try parsing with strconv next
+			val, err = strconv.ParseUint(fields[2], 0, 64)
+			if err == nil {
+				return
+			}
+
+			// value is in a format that needs to be handled...
+			err = fmt.Errorf("gnss/StmCommon.GetParam: Unable to parse returned value: %q", fields[2])
 			return
 		}
 	}
