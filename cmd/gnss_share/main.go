@@ -124,23 +124,7 @@ func startServer(conf *config.Config, driver *gnss.GnssDriver) error {
 
 	// connection handler
 	fmt.Printf("Starting GNSS server, accepting connections at: %s\n", conf.Socket)
-	go func() {
-		for {
-			conn, err := sock.Accept()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			client := pool.Client{
-				Conn: &conn,
-				Send: make(chan []byte),
-			}
-
-			connPool.Register <- &client
-
-			go handleConnection(connPool, &client)
-		}
-	}()
+	go connectionHandler(&sock, connPool)
 
 	// driver manager
 	stopChan := make(chan bool)
@@ -219,8 +203,25 @@ func startServer(conf *config.Config, driver *gnss.GnssDriver) error {
 			oldCount = connCount
 			time.Sleep(time.Second * 1)
 		}
-
 	}
+}
+
+func connectionHandler(sock *net.Listener, connPool *pool.Pool) {
+		for {
+			conn, err := (*sock).Accept()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			client := pool.Client{
+				Conn: &conn,
+				Send: make(chan []byte),
+			}
+
+			connPool.Register <- &client
+
+			go handleConnection(connPool, &client)
+		}
 }
 
 func handleConnection(p *pool.Pool, c *pool.Client) {
