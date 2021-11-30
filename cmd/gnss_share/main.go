@@ -7,17 +7,14 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"os/signal"
-	"os/user"
-	"strconv"
 	"syscall"
-	"time"
 
 	"gitlab.com/postmarketOS/gnss_share/internal/config"
 	"gitlab.com/postmarketOS/gnss_share/internal/gnss"
 	"gitlab.com/postmarketOS/gnss_share/internal/pool"
+	"gitlab.com/postmarketOS/gnss_share/internal/server"
 )
 
 func usage() {
@@ -80,160 +77,52 @@ func main() {
 			usage()
 			return
 		}
-		// run mode
-	}
-
-	if err := startServer(conf, &driver); err != nil {
-		log.Fatal(err)
-	}
-
-}
-
-func startServer(conf *config.Config, driver *gnss.GnssDriver) error {
-	if err := os.RemoveAll(conf.Socket); err != nil {
-		return fmt.Errorf("startServer(): %w", err)
-	}
-
-	sock, err := net.Listen("unix", conf.Socket)
-	if err != nil {
-		return fmt.Errorf("startServer(): %w", err)
-	}
-	defer sock.Close()
-
-	if err := os.Chmod(conf.Socket, 0660); err != nil {
-		return fmt.Errorf("startServer(): %w", err)
-	}
-
-	group, err := user.LookupGroup(conf.OwnerGroup)
-	if err != nil {
-		return fmt.Errorf("startServer(): %w", err)
-	}
-
-	gid, err := strconv.ParseInt(group.Gid, 10, 16)
-	if err != nil {
-		return fmt.Errorf("startServer(): %w", err)
-	}
-
-	if err := os.Chown(conf.Socket, -1, int(gid)); err != nil {
-		return fmt.Errorf("startServer(): %w", err)
+		// server mode
 	}
 
 	// connection broadcast pool
 	connPool := pool.New()
 	go connPool.Start()
 
-	// connection handler
-	fmt.Printf("Starting GNSS server, accepting connections at: %s\n", conf.Socket)
-	go connectionHandler(&sock, connPool)
-
-	// driver manager
+	// channels for starting/stopping the driver
 	stopChan := make(chan bool)
+	startChan := make(chan bool)
 	errChan := make(chan error)
-	// register SIGUSR1/2 for handling load/store of almanac/ephemeris data
-	// on-demand
+
+	go func() {
+		for range startChan {
+			go driver.Start(connPool.Broadcast, stopChan, errChan)
+		}
+	}()
+
+	// start signal handler
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGUSR2)
-
-	var oldCount int
-	for {
-		connCount := len(connPool.Clients)
-		select {
-		case err = <-errChan:
-			log.Fatal(err)
-		case sig := <-sigChan:
+	go func() {
+		for sig := range sigChan {
 			switch sig {
 			case syscall.SIGUSR1:
 				fmt.Printf("received SIGUSR1, loading data from %q\n", conf.CachePath)
-				active := connCount > 0
-				// stop receiving/broadcasting location data from gnss
-				// device
-				if active {
-					stopChan <- true
-				}
 
-				if err := (*driver).Load(conf.CachePath); err != nil {
+				if err := driver.Load(conf.CachePath); err != nil {
 					// not fatal
 					fmt.Printf("error loading data: %s\n", err)
-				}
-
-				// resume receiving/broadcasting location data from gnss
-				// device
-				if active {
-					go (*driver).Start(connPool.Broadcast, stopChan, errChan)
 				}
 			case syscall.SIGUSR2:
 				fmt.Printf("received SIGUSR2, storing data to %q\n", conf.CachePath)
-				active := connCount > 0
-				// stop receiving/broadcasting location data from gnss
-				// device
-				if active {
-					stopChan <- true
-				}
 
-				if err := (*driver).Save(conf.CachePath); err != nil {
+				if err := driver.Save(conf.CachePath); err != nil {
 					// not fatal
 					fmt.Printf("error loading data: %s\n", err)
 				}
-
-				// resume receiving/broadcasting location data from gnss
-				// device
-				if active {
-					go (*driver).Start(connPool.Broadcast, stopChan, errChan)
-				}
 			}
-		default:
-			if connCount != oldCount {
-				if connCount > oldCount {
-					fmt.Println("New client connected")
-				} else if connCount < oldCount {
-					fmt.Println("Client disconnected")
-					if connCount == 0 {
-						fmt.Println("No clients connected, closing GNSS")
-						stopChan <- true
-					}
-				}
-				fmt.Printf("Total connected clients: %d\n", len(connPool.Clients))
-
-				// start gnss driver only when the first client (from 0
-				// current connections, that is) connects
-				if oldCount == 0 && connCount == 1 {
-					go (*driver).Start(connPool.Broadcast, stopChan, errChan)
-				}
-			}
-			oldCount = connCount
-			time.Sleep(time.Second * 1)
 		}
-	}
-}
-
-func connectionHandler(sock *net.Listener, connPool *pool.Pool) {
-		for {
-			conn, err := (*sock).Accept()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			client := pool.Client{
-				Conn: &conn,
-				Send: make(chan []byte),
-			}
-
-			connPool.Register <- &client
-
-			go handleConnection(connPool, &client)
-		}
-}
-
-func handleConnection(p *pool.Pool, c *pool.Client) {
-	defer func() {
-		p.Unregister <- c
-		(*c.Conn).Close()
 	}()
 
-	for {
-		msg := <-c.Send
-		if _, err := (*c.Conn).Write(msg); err != nil {
-			return
-		}
+	s := server.New(conf.Socket, conf.OwnerGroup, startChan, stopChan, connPool)
+
+	if err := s.Start(); err != nil {
+		log.Fatal(err)
 	}
+
 }
