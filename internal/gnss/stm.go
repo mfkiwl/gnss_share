@@ -191,7 +191,7 @@ func (s *StmCommon) Save(dir string) (err error) {
 		return
 	}
 
-	err = s.saveEphemerides(filepath.Join(dir, "ephemerides.txt"))
+	err = s.saveEphemeris(filepath.Join(dir, "ephemeris.txt"))
 	if err != nil {
 		return
 	}
@@ -208,7 +208,7 @@ func (s *StmCommon) Load(dir string) (err error) {
 	s.open()
 	defer s.close()
 
-	err = s.loadEphemerides(filepath.Join(dir, "ephemerides.txt"))
+	err = s.loadEphemeris(filepath.Join(dir, "ephemeris.txt"))
 	if err != nil {
 		return
 	}
@@ -352,7 +352,7 @@ func (s *StmCommon) Restore() (err error) {
 	return
 }
 
-func (s *StmCommon) saveEphemerides(path string) (err error) {
+func (s *StmCommon) saveEphemeris(path string) (err error) {
 	fmt.Printf("Storing ephemerides to: %q\n", path)
 
 	err = s.pause()
@@ -363,7 +363,7 @@ func (s *StmCommon) saveEphemerides(path string) (err error) {
 
 	out, err := s.sendCmd(nmea.Sentence{Type: "PSTMDUMPEPHEMS"}.String(), true)
 	if err != nil {
-		return fmt.Errorf("gnss/StmCommon.saveEphemerides: %w", err)
+		return fmt.Errorf("gnss/StmCommon.saveEphemeris: %w", err)
 	}
 
 	fd, err := os.Create(path)
@@ -487,10 +487,10 @@ func (s *StmCommon) batchSendCmd(cmds []string, strict bool) (out []string, err 
 	return
 }
 
-func (s *StmCommon) loadEphemerides(path string) (err error) {
+func (s *StmCommon) loadEphemeris(path string) (err error) {
 	fd, err := os.Open(path)
 	if err != nil {
-		err = fmt.Errorf("gnss/StmCommon.loadAlmanac: %w", err)
+		err = fmt.Errorf("gnss/StmCommon.loadEphemeris: %w", err)
 		return
 	}
 	defer fd.Close()
@@ -509,7 +509,7 @@ func (s *StmCommon) loadEphemerides(path string) (err error) {
 
 	_, err = s.batchSendCmd(lines, false)
 	if err != nil {
-		return fmt.Errorf("gnss/StmCommon.loadEphemerides: %w", err)
+		return fmt.Errorf("gnss/StmCommon.loadEphemeris: %w", err)
 	}
 
 	return
