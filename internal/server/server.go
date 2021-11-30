@@ -83,7 +83,7 @@ func (s *Server) connectionHandler() error {
 
 		client := pool.Client{
 			Conn: &conn,
-			Send: make(chan []byte),
+			Send: make(chan []byte, 1),
 		}
 
 		if s.connPool.Count() == 0 {
