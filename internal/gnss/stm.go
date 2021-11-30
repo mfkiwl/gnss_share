@@ -34,6 +34,7 @@ type StmCommon struct {
 	path     string
 	scanner  *bufio.Scanner
 	writer   io.Writer
+	devMu    sync.Mutex
 	refMu    sync.Mutex
 	openRefs int
 }
@@ -173,6 +174,16 @@ func (s *StmGnss) close() (err error) {
 	return
 }
 
+func (s *StmCommon) readline() (line string, err error) {
+	for s.scanner.Scan() {
+		line = s.scanner.Text()
+		break
+	}
+
+	err = s.scanner.Err()
+	return
+}
+
 func (s *StmGnss) ready() (bool, error) {
 	// device sends this message when it has booted
 	resp := nmea.Sentence{
@@ -182,20 +193,23 @@ func (s *StmGnss) ready() (bool, error) {
 
 	tries := 100
 	c := 0
-	for s.scanner.Scan() {
+	for {
 		if c > tries {
 			return false, fmt.Errorf("gnss/StmCommon.open: timed out waiting for device")
 		}
-		line := s.scanner.Text()
-		// Contains() is used because sometimes the device will prefix a
-		// message with a NULL byte or do other undocumented crazy things like
-		// that.
+
+		s.devMu.Lock()
+		defer s.devMu.Unlock()
+		line, err := s.readline()
+		if err != nil {
+			err = fmt.Errorf("gnss/StmGnss.ready: %w", err)
+			return false, err
+		}
 		if strings.Contains(line, resp) {
 			return true, nil
 		}
 		c++
 	}
-	return false, nil
 }
 
 func (s *StmCommon) Start(sendCh chan<- []byte, stop <-chan bool, errCh chan<- error) {
@@ -206,18 +220,20 @@ func (s *StmCommon) Start(sendCh chan<- []byte, stop <-chan bool, errCh chan<- e
 	}
 	defer s.close()
 
-scanLoop: // used to break out of select when a 'stop' is received
-	for s.scanner.Scan() {
+	for {
 		select {
 		case <-stop:
-			break scanLoop
+			return
 		default:
-			sendCh <- s.scanner.Bytes()
+			s.devMu.Lock()
+			line, err := s.readline()
+			s.devMu.Unlock()
+			if err != nil {
+				errCh <- fmt.Errorf("gnss/stm.Start: %w", err)
+				return
+			}
+			sendCh <- []byte(line)
 		}
-	}
-	if err := s.scanner.Err(); err != nil {
-		errCh <- fmt.Errorf("gnss/stm.Start: %w", err)
-		return
 	}
 }
 
@@ -230,6 +246,9 @@ func (s *StmCommon) Save(dir string) (err error) {
 		return
 	}
 
+	// get a lock to prevent the Start() goroutine from intercepting responses
+	s.devMu.Lock()
+	defer s.devMu.Unlock()
 	err = s.saveEphemeris(filepath.Join(dir, "ephemeris.txt"))
 	if err != nil {
 		return
@@ -247,6 +266,9 @@ func (s *StmCommon) Load(dir string) (err error) {
 	s.open()
 	defer s.close()
 
+	// get a lock to prevent the Start() goroutine from intercepting responses
+	s.devMu.Lock()
+	defer s.devMu.Unlock()
 	err = s.loadEphemeris(filepath.Join(dir, "ephemeris.txt"))
 	if err != nil {
 		return
@@ -461,8 +483,13 @@ func (s *StmCommon) sendCmd(cmd string, isAcked bool) (out []string, err error) 
 
 	// TODO: time out at some point...
 	c := 0
-	for s.scanner.Scan() {
-		line := s.scanner.Text()
+	var line string
+	for {
+		line, err = s.readline()
+		if err != nil {
+			err = fmt.Errorf("gnss/StmCommon.sendCmd: %w", err)
+			return
+		}
 		fmt.Printf("read: %s\n", line)
 
 		// Command it echo'd back when it is complete.
@@ -472,11 +499,6 @@ func (s *StmCommon) sendCmd(cmd string, isAcked bool) (out []string, err error) 
 
 		out = append(out, line)
 		c++
-	}
-
-	if err = s.scanner.Err(); err != nil {
-		err = fmt.Errorf("gnss/StmCommon.sendCmd: %w", err)
-		return
 	}
 	return
 }
