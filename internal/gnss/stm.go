@@ -314,7 +314,7 @@ func (s *StmCommon) GetParam(cdbId int) (val uint64, err error) {
 				return
 			}
 			// try to parse with big.Parse first, sometimes module response is
-			// in scientific notation...
+			// in scientific notation..
 			var valBig *big.Float
 			valBig, _, err = big.ParseFloat(fields[2], 10, 0, big.ToNearestEven)
 			if err == nil {
@@ -327,7 +327,7 @@ func (s *StmCommon) GetParam(cdbId int) (val uint64, err error) {
 				return
 			}
 
-			// value is in a format that needs to be handled...
+			// value is in a format that needs to be handled..
 			err = fmt.Errorf("gnss/StmCommon.GetParam: Unable to parse returned value: %q", fields[2])
 			return
 		}
@@ -481,7 +481,7 @@ func (s *StmCommon) sendCmd(cmd string, isAcked bool) (out []string, err error) 
 		return
 	}
 
-	// TODO: time out at some point...
+	// TODO: time out at some point..
 	c := 0
 	var line string
 	for {
@@ -538,7 +538,7 @@ func (s *StmCommon) batchSendCmd(cmds []string, strict bool) (out []string, err 
 	for _, c := range cmds {
 		out, err = s.sendCmd(c, true)
 		if err != nil {
-			err = fmt.Errorf("gnss/StmCommon.loadAlmanac: %s", err)
+			err = fmt.Errorf("gnss/StmCommon.batchSendCmd: %s", err)
 			if strict {
 				return
 			}
