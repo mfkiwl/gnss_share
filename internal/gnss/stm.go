@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/tarm/serial"
@@ -30,9 +31,11 @@ type Stm interface {
 
 type StmCommon struct {
 	Stm
-	path    string
-	scanner *bufio.Scanner
-	writer  io.Writer
+	path     string
+	scanner  *bufio.Scanner
+	writer   io.Writer
+	refMu    sync.Mutex
+	openRefs int
 }
 
 // StmGnss is a STM module connected through the GNSS subsystem in the Linux
@@ -67,6 +70,13 @@ func NewStmSerial(path string, baud int) *StmSerial {
 }
 
 func (s *StmSerial) open() (err error) {
+	s.refMu.Lock()
+	defer s.refMu.Unlock()
+
+	if s.openRefs > 0 {
+		s.openRefs++
+		return
+	}
 	s.serPort, err = serial.OpenPort(&s.serConf)
 	if err != nil {
 		err = fmt.Errorf("gnss/StmSerial.Open(): %w", err)
@@ -74,18 +84,27 @@ func (s *StmSerial) open() (err error) {
 	}
 	s.scanner = bufio.NewScanner(s.serPort)
 	s.writer = s.serPort
+	s.openRefs++
 
 	return
 }
 
 func (s *StmSerial) close() (err error) {
-	if s.serPort != nil {
-		err = s.serPort.Close()
-		if err != nil {
-			err = fmt.Errorf("gnss/StmSerial.Close: %w", err)
-			return
-		}
+	s.refMu.Lock()
+	defer s.refMu.Unlock()
+
+	if s.openRefs > 1 {
+		return
 	}
+
+	err = s.serPort.Close()
+	if err != nil {
+		err = fmt.Errorf("gnss/StmSerial.Close: %w", err)
+		return
+	}
+	s.serPort = nil
+	s.openRefs = 0
+
 	return
 }
 
@@ -105,6 +124,13 @@ func NewStmGnss(path string) *StmGnss {
 }
 
 func (s *StmGnss) open() (err error) {
+	s.refMu.Lock()
+	defer s.refMu.Unlock()
+
+	if s.openRefs > 0 {
+		s.openRefs++
+		return
+	}
 	// Using syscall.Open will open the file in non-pollable mode, which
 	// results in a significant reduction in CPU usage on ARM64 systems,
 	// and no noticeable impact on x86_64. We don't need to poll the file
@@ -123,14 +149,27 @@ func (s *StmGnss) open() (err error) {
 	if ready, err := s.ready(); !ready {
 		return fmt.Errorf("gnss/StmCommon.Start: device not ready: %s", err)
 	}
+
+	s.openRefs++
+
 	return
 }
 
 func (s *StmGnss) close() (err error) {
+	s.refMu.Lock()
+	defer s.refMu.Unlock()
+
+	if s.openRefs > 1 {
+		return
+	}
+
 	err = s.device.Close()
 	if err != nil {
 		err = fmt.Errorf("gnss/Stm.Close: %w", err)
 	}
+	s.device = nil
+	s.openRefs = 0
+
 	return
 }
 
