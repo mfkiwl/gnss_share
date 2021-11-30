@@ -170,10 +170,6 @@ scanLoop: // used to break out of select when a 'stop' is received
 	for s.scanner.Scan() {
 		select {
 		case <-stop:
-			err := s.close()
-			if err != nil {
-				fmt.Println(err)
-			}
 			break scanLoop
 		default:
 			sendCh <- s.scanner.Bytes()
