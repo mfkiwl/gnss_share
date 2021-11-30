@@ -23,6 +23,7 @@ type Stm interface {
 	close() (err error)
 	ready() (bool, error)
 	Restore() (err error)
+	Reset() (err error)
 	SetParam(cdbId int, value uint64) (err error)
 	GetParam(cdbId int) (val uint64, err error)
 }
@@ -316,6 +317,18 @@ func (s *StmCommon) SetParam(cdbId int, value uint64) (err error) {
 		s.resume()
 		return
 	}
+	_, err = s.sendCmd(nmea.Sentence{Type: "PSTMSRR"}.String(), false)
+	return
+}
+
+func (s *StmCommon) Reset() (err error) {
+	if err = s.open(); err != nil {
+		err = fmt.Errorf("gnss/stmCommon.Reset: %w", err)
+		return
+	}
+
+	defer s.close()
+	s.pause()
 	_, err = s.sendCmd(nmea.Sentence{Type: "PSTMSRR"}.String(), false)
 	return
 }

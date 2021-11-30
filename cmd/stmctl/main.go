@@ -34,6 +34,7 @@ func main() {
 		fmt.Printf("  %-12s\t%s\n", "get <CDB-ID>", "Get CDB-ID value.")
 		fmt.Printf("  %-12s\t%s\n", "set <CDB-ID> <value>", "Set CDB-ID to given value.")
 		fmt.Printf("  %-12s\t%s\n", "restore", "Restore module config to factory defaults.")
+		fmt.Printf("  %-12s\t%s\n", "reset", "Reset the module.")
 	}
 
 	flag.Parse()
@@ -54,6 +55,9 @@ func main() {
 	switch cmd := flag.Arg(0); cmd {
 	case "restore":
 		stm.Restore()
+		return
+	case "reset":
+		stm.Reset()
 		return
 	case "set":
 		if len(flag.Args()) < 2 {
