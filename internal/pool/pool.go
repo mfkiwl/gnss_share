@@ -5,6 +5,7 @@ package pool
 
 import (
 	"net"
+	"sync"
 )
 
 type Client struct {
@@ -17,6 +18,7 @@ type Pool struct {
 	Unregister chan *Client
 	Clients    map[*Client]bool
 	Broadcast  chan []byte
+	mu         sync.Mutex
 }
 
 func New() *Pool {
@@ -32,13 +34,26 @@ func (p *Pool) Start() {
 	for {
 		select {
 		case c := <-p.Register:
+			p.mu.Lock()
 			p.Clients[c] = true
+			p.mu.Unlock()
 		case c := <-p.Unregister:
+			p.mu.Lock()
 			delete(p.Clients, c)
+			p.mu.Unlock()
 		case msg := <-p.Broadcast:
+			msg = append(msg, byte('\n'))
 			for c := range p.Clients {
-				c.Send <- append(msg, byte('\n'))
+				c.Send <- msg
 			}
 		}
 	}
+}
+
+func (p *Pool) Count() (count int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	count = len(p.Clients)
+	return
 }
