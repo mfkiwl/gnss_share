@@ -86,7 +86,7 @@ func (s *Server) connectionHandler() error {
 			Send: make(chan []byte),
 		}
 
-		if len(s.connPool.Clients) == 0 {
+		if s.connPool.Count() == 0 {
 			// client is first one in the connPool
 			s.startChan <- true
 		}
@@ -116,7 +116,7 @@ func (s *Server) clientConnection(c *pool.Client) {
 
 	// client disconnected
 	fmt.Println("Client disconnected")
-	if len(s.connPool.Clients) == 1 {
+	if s.connPool.Count() == 1 {
 		// client is last one in the pool
 		fmt.Println("No clients connected, closing GNSS")
 		s.stopChan <- true
