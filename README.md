@@ -11,23 +11,23 @@ this app.
 
 # Configuration
 
-`gnss_share.conf` can be used to change the listening socket, group owner for
+`gnss-share.conf` can be used to change the listening socket, group owner for
 socket, and other options. The application looks for this file in either the
-current working directory, or in `/etc/gnss_share.conf`.
+current working directory, or in `/etc/gnss-share.conf`.
 
 See this file for descriptions of supported options.
 
 # Usage
 
 ```
-usage: gnss_share COMMAND [OPTION...]
+usage: gnss-share COMMAND [OPTION...]
 Commands:
   [none]        The default behavior if no command is specified is to run in server mode.
   store         Store almanac and ephemerides data and quit.
   load          Load almanac and ephemerides data and quit.
 Options:
   -c string
-        Configuration file to use. (default "/etc/gnss_share.conf")
+        Configuration file to use. (default "/etc/gnss-share.conf")
   -h    Print help and quit.
 ```
 
@@ -48,10 +48,10 @@ following signals when in "server" mode:
 
 - Go
 
-Build the `gnss_share` application with:
+Build the `gnss-share` application with:
 
 ```
-$ go build ./cmd/gnss_share
+$ go build ./cmd/gnss-share
 ```
 
 # Development

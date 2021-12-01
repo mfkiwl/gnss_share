@@ -10,7 +10,7 @@ import (
 	"os/user"
 	"strconv"
 
-	"gitlab.com/postmarketOS/gnss_share/internal/pool"
+	"gitlab.com/postmarketOS/gnss-share/internal/pool"
 )
 
 type Server struct {

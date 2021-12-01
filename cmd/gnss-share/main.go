@@ -11,10 +11,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gitlab.com/postmarketOS/gnss_share/internal/config"
-	"gitlab.com/postmarketOS/gnss_share/internal/gnss"
-	"gitlab.com/postmarketOS/gnss_share/internal/pool"
-	"gitlab.com/postmarketOS/gnss_share/internal/server"
+	"gitlab.com/postmarketOS/gnss-share/internal/config"
+	"gitlab.com/postmarketOS/gnss-share/internal/gnss"
+	"gitlab.com/postmarketOS/gnss-share/internal/pool"
+	"gitlab.com/postmarketOS/gnss-share/internal/server"
 )
 
 func usage() {
@@ -23,12 +23,12 @@ func usage() {
 
 func main() {
 	var confFile string
-	flag.StringVar(&confFile, "c", "/etc/gnss_share.conf", "Configuration file to use.")
+	flag.StringVar(&confFile, "c", "/etc/gnss-share.conf", "Configuration file to use.")
 	var help bool
 	flag.BoolVar(&help, "h", false, "Print help and quit.")
 
 	flag.Usage = func() {
-		fmt.Println("usage: gnss_share COMMAND [OPTION...]")
+		fmt.Println("usage: gnss-share COMMAND [OPTION...]")
 		fmt.Println("Commands:")
 		fmt.Printf("  %-12s\t%s\n", "[none]", "The default behavior if no command is specified is to run in \"server\" mode.")
 		fmt.Printf("  %-12s\t%s\n", "store", "Store almanac and ephemeris data and quit.")

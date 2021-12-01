@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"gitlab.com/postmarketOS/gnss_share/internal/gnss"
+	"gitlab.com/postmarketOS/gnss-share/internal/gnss"
 )
 
 func usage() {

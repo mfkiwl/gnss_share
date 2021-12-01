@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 description="GNSS location manager"
 
-: ${error_logger="logger -t gnss_share -p daemon.error"}
-: ${output_logger="logger -t gnss_share -p daemon.info"}
+: ${error_logger="logger -t gnss-share -p daemon.error"}
+: ${output_logger="logger -t gnss-share -p daemon.info"}
 
-command=/usr/bin/gnss_share
+command=/usr/bin/gnss-share
 command_background=true
 pidfile="/run/${RC_SVCNAME}.pid"
 

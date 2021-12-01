@@ -39,7 +39,7 @@ build:
   before_script:
     - apk -q add go
   script:
-    - go build -v ./cmd/gnss_share
+    - go build -v ./cmd/gnss-share
     - go test ./...
   artifacts:
     expire_in: 1 week

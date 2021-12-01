@@ -16,7 +16,7 @@ import (
 	"syscall"
 
 	"github.com/tarm/serial"
-	"gitlab.com/postmarketOS/gnss_share/internal/nmea"
+	"gitlab.com/postmarketOS/gnss-share/internal/nmea"
 )
 
 type Stm interface {

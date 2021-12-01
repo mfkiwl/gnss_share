@@ -1,4 +1,4 @@
-module gitlab.com/postmarketOS/gnss_share
+module gitlab.com/postmarketOS/gnss-share
 
 go 1.17
 
